@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{{ dataset.name }}</h2>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Dataset Information</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Number of Features:</strong> {{ n_features }}</p>
+                    <p><strong>Number of Samples:</strong> {{ n_samples }}</p>
+                    <p><strong>Uploaded:</strong> {{ dataset.uploaded_at|date:"M d, Y H:i" }}</p>
+                    
+                    <form method="post" action="{% url 'run_feature_selection' dataset.id %}">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="target_column" class="form-label">Target Column</label>
+                            <select class="form-select" id="target_column" name="target_column" required>
+                                <option value="">Select target column...</option>
+                                {% for column in columns %}
+                                    <option value="{{ column }}" {% if column == 'itemDescription' %}selected{% endif %}>{{ column }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Choose the column to predict (target variable).</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="chromosome_type" class="form-label">Chromosome Type</label>
+                            <select class="form-select" id="chromosome_type" name="chromosome_type">
+                                <option value="adaptive" selected>Adaptive (Recommended)</option>
+                                <option value="binary">Binary Chromosome</option>
+                                <option value="real_valued">Real-Valued Chromosome</option>
+                                <option value="permutation">Permutation Chromosome</option>
+                            </select>
+                            <div class="form-text">Choose the chromosome representation for the genetic algorithm.</div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="population_size" class="form-label">Population Size</label>
+                                    <input type="number" class="form-control" id="population_size" name="population_size" value="50" min="10" max="200">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="generations" class="form-label">Generations</label>
+                                    <input type="number" class="form-control" id="generations" name="generations" value="20" min="5" max="100">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-play"></i> Run Feature Selection
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Feature Selection Results</h5>
+                </div>
+                <div class="card-body">
+                    {% if selections %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Selected Features</th>
+                                        <th>Fitness Score</th>
+                                        <th>Algorithm</th>
+                                        <th>Generations</th>
+                                        <th>Created</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for selection in selections %}
+                                    <tr>
+                                        <td>
+                                            {% for feature in selection.selected_features %}
+                                                <span class="badge bg-success me-1">{{ feature }}</span>
+                                            {% endfor %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-primary">{{ selection.fitness_score|floatformat:4 }}</span>
+                                        </td>
+                                        <td>
+                                            {% if selection.algorithm_type == 'advanced' %}
+                                                <span class="badge bg-success">{{ selection.algorithm_type|title }}</span>
+                                            {% else %}
+                                                <span class="badge bg-info">{{ selection.algorithm_type|title }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ selection.generation }}</td>
+                                        <td>{{ selection.created_at|date:"M d, H:i" }}</td>
+                                        <td>
+                                            <a href="{% url 'selection_results' dataset.id selection.id %}" class="btn btn-sm btn-outline-primary">
+                                                View Details
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No feature selection has been run yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Data Preview</h5>
+                </div>
+                <div class="card-body">
+                    {{ preview|safe }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

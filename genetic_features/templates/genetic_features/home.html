@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Feature Selection with Genetic Algorithms</h1>
+<div class="row mt-4">
+    <div class="col-md-12">
+        <a href="{% url 'upload' %}" class="btn btn-primary mb-4">Upload New Dataset</a>
+        
+        {% if datasets %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Available Datasets</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Uploaded At</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for dataset in datasets %}
+                                <tr>
+                                    <td>{{ dataset.name }}</td>
+                                    <td>{{ dataset.uploaded_at }}</td>
+                                    <td>
+                                        <a href="{% url 'dataset_detail' dataset.pk %}" 
+                                           class="btn btn-sm btn-info">View Details</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                No datasets available. Upload a dataset to begin feature selection.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

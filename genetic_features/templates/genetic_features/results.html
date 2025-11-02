@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feature Selection Results</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .result-card {
+            border-left: 4px solid #007bff;
+            margin-bottom: 20px;
+        }
+        .metric-badge {
+            font-size: 0.9em;
+            margin: 2px;
+        }
+        .feature-badge {
+            margin: 2px;
+            font-size: 0.85em;
+        }
+        .convergence-chart {
+            height: 300px;
+            margin: 20px 0;
+        }
+        .algorithm-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'dataset_list' %}">
+                <i class="fas fa-dna"></i> Feature Selection
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{% url 'dataset_list' %}">
+                    <i class="fas fa-home"></i> Home
+                </a>
+                <a class="nav-link" href="{% url 'dataset_detail' dataset.id %}">
+                    <i class="fas fa-arrow-left"></i> Back to Dataset
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="fas fa-chart-line"></i> Feature Selection Results</h2>
+                    <span class="badge bg-info fs-6">Dataset: {{ dataset.name }}</span>
+                </div>
+
+                {% if selection %}
+                <div class="card result-card position-relative">
+                    {% if selection.algorithm_type == 'advanced' %}
+                        <span class="badge bg-success algorithm-badge">
+                    {% else %}
+                        <span class="badge bg-primary algorithm-badge">
+                    {% endif %}
+                        {{ selection.algorithm_type|title }} Algorithm
+                    </span>
+                    
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-cog"></i> 
+                            Results from {{ selection.created_at|date:"M d, Y H:i" }}
+                        </h5>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="row">
+                            <!-- Main Metrics -->
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-tachometer-alt"></i> Performance Metrics</h6>
+                                <div class="mb-3">
+                                    <span class="badge bg-primary metric-badge">
+                                        <i class="fas fa-bullseye"></i> 
+                                        Fitness Score: {{ selection.fitness_score|floatformat:4 }}
+                                    </span>
+                                    <span class="badge bg-info metric-badge">
+                                        <i class="fas fa-layer-group"></i> 
+                                        Generations: {{ selection.generation }}
+                                    </span>
+                                    {% if selection.detailed_results %}
+                                        <span class="badge bg-success metric-badge">
+                                            <i class="fas fa-percentage"></i> 
+                                            Selection Ratio: {{ selection.detailed_results.selection_ratio|floatformat:2 }}
+                                        </span>
+                                        <span class="badge bg-warning text-dark metric-badge">
+                                            <i class="fas fa-arrow-up"></i> 
+                                            Improvement: {{ selection.detailed_results.improvement_over_random|floatformat:4 }}
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <!-- Selected Features -->
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-check-circle"></i> Selected Features ({{ selection.selected_features|length }})</h6>
+                                <div class="mb-3">
+                                    {% for feature in selection.selected_features %}
+                                        <span class="badge bg-success feature-badge">
+                                            <i class="fas fa-tag"></i> {{ feature }}
+                                        </span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if selection.detailed_results %}
+                        <hr>
+                        
+                        <!-- Advanced Results -->
+                        <div class="row">
+                            <div class="col-md-12">
+                                <h6><i class="fas fa-microscope"></i> Detailed Analysis</h6>
+                                
+                                <!-- Feature Importance -->
+                                {% if selection.detailed_results.selected_importance_scores %}
+                                <div class="mb-3">
+                                    <strong>Feature Importance Scores:</strong>
+                                    <div class="mt-2">
+                                        {% for score in selection.detailed_results.selected_importance_scores %}
+                                            <span class="badge bg-secondary metric-badge">
+                                                Feature {{ forloop.counter }}: {{ score|floatformat:4 }}
+                                            </span>
+                                        {% endfor %}
+                                    </div>
+                                    <small class="text-muted">
+                                        Average Importance: {{ selection.detailed_results.avg_importance|floatformat:4 }}
+                                    </small>
+                                </div>
+                                {% endif %}
+
+                                <!-- Convergence Information -->
+                                {% if selection.detailed_results.convergence_info %}
+                                <div class="mb-3">
+                                    <strong>Algorithm Convergence:</strong>
+                                    <div class="row mt-2">
+                                        <div class="col-md-6">
+                                            <canvas id="convergenceChart" class="convergence-chart"></canvas>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="bg-light p-3 rounded">
+                                                <h6>Convergence Summary</h6>
+                                                <ul class="list-unstyled mb-0">
+                                                    <li><i class="fas fa-chart-line text-primary"></i> 
+                                                        Best Fitness: {{ selection.detailed_results.convergence_info.best_fitness_history|last|floatformat:4 }}
+                                                    </li>
+                                                    <li><i class="fas fa-calculator text-info"></i> 
+                                                        Final Avg: {{ selection.detailed_results.convergence_info.avg_fitness_history|last|floatformat:4 }}
+                                                    </li>
+                                                    <li><i class="fas fa-stopwatch text-success"></i> 
+                                                        Generations Run: {{ selection.detailed_results.generations_run }}
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i> 
+                    No results found for this selection.
+                </div>
+                {% endif %}
+
+                <!-- Action Buttons -->
+                <div class="mt-4">
+                    <a href="{% url 'dataset_detail' dataset.id %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Dataset
+                    </a>
+                    <a href="{% url 'run_feature_selection' dataset.id %}" class="btn btn-primary">
+                        <i class="fas fa-play"></i> Run New Selection
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart.js for convergence visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    {% if selection.detailed_results.convergence_info %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('convergenceChart').getContext('2d');
+            const bestFitnessData = JSON.parse('{{ selection.detailed_results.convergence_info.best_fitness_history|escapejs }}');
+            const avgFitnessData = JSON.parse('{{ selection.detailed_results.convergence_info.avg_fitness_history|escapejs }}');
+            const generationLabels = Array.from({length: bestFitnessData.length}, (_, i) => i + 1);
+        
+        const convergenceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: generationLabels,
+                datasets: [{
+                    label: 'Best Fitness',
+                    data: bestFitnessData,
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                    tension: 0.1
+                }, {
+                    label: 'Average Fitness',
+                    data: avgFitnessData,
+                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Fitness Score'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Generation'
+                        }
+                    }
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Algorithm Convergence'
+                    },
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                }
+            }
+        });
+        });
+    </script>
+    {% endif %}
+</body>
+</html>
